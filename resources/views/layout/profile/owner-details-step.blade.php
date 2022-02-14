@@ -1,0 +1,171 @@
+@extends('layout.mainlayout')
+<link href="{{asset('dashboard-layout/css/spinner.css')}}" rel="stylesheet">
+
+@section('content')
+    <div class="circles-to-rhombuses-spinner overlay" id="spinner" style=" display: none; position: fixed;
+  z-index: 999;
+  margin: auto;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  right: 0;">
+        <div class="circle"></div>
+        <div class="circle"></div>
+        <div class="circle"></div>
+    </div>
+    <!-- row -->
+    <div class="row">
+        <div class="col-xl-12 col-xxl-12">
+            <div class="card">
+                <div class="card-body">
+                    <div class="col-md-6 offset-md-3">
+                        <div id="smartwizard" class="form-wizard order-create sw sw-theme-default sw-justified"
+                             style="border: #212130">
+                            <div class="basic-form">
+                                <form id="general-information"
+                                      class="form-wizard order-create sw sw-theme-default sw-justified needs-validation"
+                                      method="post" style="border: #212130">
+                                    <div class="mb-3">
+                                        <label class="text-label form-label">Emirates ID*</label>
+                                        <div class="input-group">
+                                            <input type="email" class="form-control" name="national_number"
+                                                   id="national_number" required
+                                                   value="{{$account->owner != null ? $account->owner->national_number : ''}}">
+                                        </div>
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <label class="text-label form-label">Owner Name*</label>
+                                        <div class="input-group">
+                                            <span class="input-group-text"> <i class="fa fa-list-alt"></i> </span>
+                                            <input type="text" class="form-control" name="owner_name" required
+                                                   value="{{$account->owner != null ? $account->owner->account_name : ''}}">
+                                        </div>
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <label class="text-label form-label">Owner Email*</label>
+                                        <input type="email" class="form-control" name="owner_email" required
+                                               value="{{$account->owner != null ? $account->owner->email : ''}}">
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <label class="text-label form-label">Office Number*</label>
+                                        <input type="text" class="form-control" name="office_number" id="office_number"
+                                               required
+                                               value="{{$account->owner != null ? $account->owner->phone_number : '0'}}">
+                                        <small>Eg: 04 *******</small><br><br>
+                                    </div>
+
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="toolbar toolbar-bottom" role="toolbar" style="text-align: right;">
+                        <button class="btn btn-primary submit"
+                                style="background-color: #fd683e;border: 1px solid #fd683e;">Next
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+@endsection
+
+@section('js')
+
+    <script src="{{URL::asset('dashboard-layout/libs/mask/jquery.mask.min.js')}}"></script>
+
+    <script>
+        $("input[name=office_number]").keyup(function(){
+            var prefix = '0';
+            if(!(this.value.match('^0'))){
+                this.value = prefix;
+            }
+        });
+
+        $("input[name=office_number]").blur(function(){
+            var prefix = '0';
+            if(!(this.value.match('^0'))){
+                this.value = prefix;
+            }
+        });
+
+
+        $("input[name=national_number]").keyup(function(){
+            var prefix = '784-19';
+            if(!(this.value.match('^784-19'))){
+                this.value = prefix;
+            }
+        });
+
+        $("input[name=national_number]").blur(function(){
+            var prefix = '784-19';
+            if(!(this.value.match('^784-19'))){
+                this.value = prefix;
+            }
+        });
+    </script>
+
+    <script>
+        $("#national_number").mask("000-0000-0000000-0", {placeholder: "Ex: 748-1984-6578943-1"});
+        $("#office_number").mask("000000000");
+    </script>
+
+
+    <script>
+        $(".submit").click(function (event) {
+            event.preventDefault();
+            $('#spinner').show();
+            let national_number = $("input[name=national_number]").val();
+            let owner_name = $("input[name=owner_name]").val();
+            let owner_email = $("input[name=owner_email]").val();
+            let office_number = $("input[name=office_number]").val();
+
+            var data = new FormData();
+            data.append('national_number', national_number)
+            data.append('owner_name', owner_name)
+            data.append('owner_email', owner_email)
+            data.append('office_number', office_number)
+            $.ajax({
+                url: '{{route('owner-details-step')}}',
+                method: "POST",
+                headers: {
+                    'X-CSRF-Token': '{{ csrf_token() }}',
+                },
+                data: data,
+                processData: false,
+                contentType: false,
+
+                success: function (response) {
+                    $('#spinner').hide();
+                    if (response.result == 'false') {
+                        Object.keys(response.errors).forEach(key => {
+                            toastr.error(response.errors[key], "Heads Up", {
+                                positionClass: "toast-top-right",
+                                timeOut: 3e3,
+                                closeButton: !0,
+                                debug: !1,
+                                newestOnTop: !0,
+                                progressBar: !0,
+                                preventDuplicates: !0,
+                                onclick: null,
+                                showDuration: "300",
+                                hideDuration: "1000",
+                                extendedTimeOut: "1000",
+                                showEasing: "swing",
+                                hideEasing: "linear",
+                                showMethod: "fadeIn",
+                                hideMethod: "fadeOut",
+                                tapToDismiss: !1,
+                            })
+                        })
+                    } else if (response.result == 'success') {
+                        window.location.replace("bank-address-step");
+                    }
+                },
+            });
+        });
+    </script>
+
+@endsection
