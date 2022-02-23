@@ -2,6 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\AccountStatus;
+use App\Enums\AccountType;
+use App\Enums\WorkStatus;
 use App\Jobs\StoreRestaurantLogo;
 use App\Mail\ApplicationCompleted;
 use App\Mail\VerifyMail;
@@ -47,12 +50,7 @@ class AccountController extends Controller
         $onlinePayments = AccountPaymentLog::where('orderNo', '!=', null)->count();
         $categories = Category::pluck('category_name');
         $categoryIds = Category::pluck('id');
-//        $categoriesChartData = DB::table('account')
-//            ->join('category', 'category.id', '=', 'account.resturant_category_id')
-//            ->where('account.account_type_id', 2)->where('approved', 1)
-//            ->selectRaw('COUNT(account.id) as count')->groupBy(DB::Raw('IFNULL( category.id , 0 )'))->pluck('count');
-//
-//        return $categoriesChartData;
+
         $categoriesChartData = $categoryIds->map(function ($index) {
             return Account::where('account_type_id', 2)->where('resturant_category_id', $index)->where('approved', 1)->count();
         });
@@ -90,26 +88,25 @@ class AccountController extends Controller
                     'errors' => $validator->errors(),
                 ]);
             } else {
-                $fieldType = filter_var($request->login, FILTER_VALIDATE_EMAIL) ? 'email' : 'account_name';
-                $account = Account::where($fieldType, '=', $request->login)->first();
+                $fieldType = filter_var($validator->valid()['login'], FILTER_VALIDATE_EMAIL) ? 'email' : 'account_name';
+                $account = Account::where($fieldType, '=', $validator->valid()['login'])->first();
 
                 if ($account) {
-                    $result = Hash::check($request->password, $account->password);
+                    $result = Hash::check($validator->valid()['password'], $account->password);
                     if ($result) {
+
                         Session::put('account_type_id', $account->account_type_id);
                         Session::put('account_id', $account->id);
-                        //  dd( Session::get('account_type_id'));
-                        if ($account->account_type_id == Account::IS_ADMIN || $account->account_type_id == Account::IS_RESTAURANT) {
-                            $credentials = [
-                                $fieldType => $request->login,
-                                'password' => $request->password,
-                            ];
-                            $result = Auth::attempt($credentials, $request->remember == true ? true : '');
-                            if ($result) {
-                                return response()->json([
-                                    'result' => 'true',
-                                ]);
-                            }
+
+                        $credentials = [
+                            $fieldType => $request->login,
+                            'password' => $request->password,
+                        ];
+                        $result = Auth::attempt($credentials, $validator->valid()['remember'] == true ? true : '');
+                        if ($result) {
+                            return response()->json([
+                                'result' => 'true',
+                            ]);
                         }
                     }
                 }
@@ -143,12 +140,13 @@ class AccountController extends Controller
                 $account->account_name = $request->business_name;
                 $account->email = $request->email;
                 $account->phone_number = $request->phone_number;
-                $account->account_type_id = Account::IS_RESTAURANT;
-                $account->status_id = 3;
-                $account->work_status_id = 2;
+                $account->account_type_id = AccountType::IS_RESTAURANT;
+                $account->status_id = AccountStatus::INCOMPLETE;
+                $account->work_status_id = WorkStatus::CLOSED;
                 $account->password = Hash::make($request->password);
                 $account->opening_time = date("H:i", strtotime("12:00"));
                 $account->closing_time = date("H:i", strtotime("22:00"));
+
                 $account->save();
                 if ($account) {
                     event(new Registered($account));
